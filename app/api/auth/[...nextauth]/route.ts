@@ -1,4 +1,10 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
@@ -24,12 +30,6 @@ const authOptions: NextAuthOptions = {
       },
     },
   ],
-  import { createClient } from '@supabase/supabase-js';
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
 
   callbacks: {
     async signIn({ user }) {
@@ -61,6 +61,7 @@ const authOptions: NextAuthOptions = {
       return true;
     },
   },
+
   debug: process.env.NODE_ENV === "development",
 };
 
