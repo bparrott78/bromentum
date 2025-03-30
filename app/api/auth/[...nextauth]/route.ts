@@ -24,8 +24,40 @@ const authOptions: NextAuthOptions = {
       },
     },
   ],
+  import { createClient } from '@supabase/supabase-js';
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   callbacks: {
     async signIn({ user }) {
+      const worldId = user.id;
+      const walletAddress = user.name;
+
+      const { data: existingUser, error: fetchError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('world_id', worldId)
+        .single();
+
+      if (!existingUser) {
+        const { error: insertError } = await supabase.from('users').insert({
+          world_id: worldId,
+          wallet_address: walletAddress,
+        });
+
+        if (insertError) {
+          console.error('❌ Failed to insert user:', insertError);
+          return false;
+        }
+
+        console.log('✅ New user created:', worldId);
+      } else {
+        console.log('✅ Existing user logged in:', worldId);
+      }
+
       return true;
     },
   },
