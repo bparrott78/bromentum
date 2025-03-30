@@ -1,76 +1,57 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { useSession } from "next-auth/react";
+import { useState } from "react";
 
 export default function CreateBroPage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+  const { data: session } = useSession();
   const [username, setUsername] = useState('');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/');
-    }
-  }, [status, router]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleSubmit = async () => {
     setError('');
+    setSuccess(false);
 
-    const worldId = session?.user?.id;
+    const worldId = (session?.user as any)?.id;
 
     if (!worldId || !username) {
       setError("Missing world ID or username.");
-      setLoading(false);
       return;
     }
 
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({ username })
-      .eq('world_id', worldId);
+    const response = await fetch('/api/create-bro', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ world_id: worldId, username }),
+    });
 
-    if (updateError) {
-      setError("Could not set your bro name.");
-      console.error(updateError);
-      setLoading(false);
-      return;
+    if (response.ok) {
+      setSuccess(true);
+    } else {
+      const { message } = await response.json();
+      setError(message || 'Failed to create bro.');
     }
-
-    router.push('/dashboard'); // Change this to your post-setup page
   };
 
   return (
-    <div className="p-4 max-w-md mx-auto mt-12">
-      <h1 className="text-2xl font-bold mb-4">Create Your Bro Name</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          placeholder="Enter your bro name"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded"
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-        >
-          {loading ? 'Submitting...' : 'Set My Bro Name'}
-        </button>
-        {error && <p className="text-red-600 text-sm">{error}</p>}
-      </form>
+    <div className="p-6 max-w-xl mx-auto">
+      <h1 className="text-3xl font-bold mb-4">Create Your Bro</h1>
+      <input
+        type="text"
+        placeholder="Choose your bro name"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        className="border border-gray-300 rounded px-3 py-2 w-full mb-3"
+      />
+      <button
+        onClick={handleSubmit}
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+      >
+        Confirm Brohood
+      </button>
+      {error && <p className="text-red-600 mt-3">{error}</p>}
+      {success && <p className="text-green-600 mt-3">Your bro is born. 🫱🏽‍🫲🏾</p>}
     </div>
   );
 }
