@@ -36,7 +36,7 @@ const authOptions: NextAuthOptions = {
       const worldId = user.id;
       const walletAddress = user.name;
 
-      const { data: existingUser, error: fetchError } = await supabase
+      const { data: existingUser } = await supabase
         .from('users')
         .select('*')
         .eq('world_id', worldId)
@@ -60,7 +60,24 @@ const authOptions: NextAuthOptions = {
 
       return true;
     },
+
+    async jwt({ token, user }) {
+      // Add the world ID to the token
+      if (user?.id) {
+        token.id = user.id;
+      }
+      return token;
+    },
+
+    async session({ session, token }) {
+      // Push the world ID into the session so your app can access it
+      if (session.user && token?.id) {
+        session.user.id = token.id as string;
+      }
+      return session;
+    },
   },
+
 
   debug: process.env.NODE_ENV === "development",
 };
