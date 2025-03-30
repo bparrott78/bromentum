@@ -62,21 +62,22 @@ const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, user }) {
-      // Add the world ID to the token
-      if (user?.id) {
+      if (user) {
         token.id = user.id;
+        token.username = (user as any).username ?? null;
       }
       return token;
     },
 
     async session({ session, token }) {
-      // Push the world ID into the session so your app can access it
-      if (session.user && token?.id) {
+      if (session.user && token) {
         session.user.id = token.id as string;
+        session.user.username = token.username as string | null;
       }
       return session;
     },
   },
+
 
 
   debug: process.env.NODE_ENV === "development",
