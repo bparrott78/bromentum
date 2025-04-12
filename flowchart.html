@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Bromentum Flow</title>
+    <script src="https://unpkg.com/gojs/release/go.js"></script>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+
+        #myDiagramDiv {
+            width: 100%;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="myDiagramDiv"></div>
+    <script>
+        const $ = go.GraphObject.make;
+
+        const myDiagram = $(go.Diagram, "myDiagramDiv", {
+            "undoManager.isEnabled": true,
+            layout: $(go.LayeredDigraphLayout, {
+                direction: 90,
+                setsPortSpots: false,
+                columnSpacing: 150  // Add more spacing between columns
+            })
+        });
+        myDiagram.nodeTemplate =
+            $(go.Node, "Auto",
+                $(go.Shape, "RoundedRectangle", { fill: "#ffffff", stroke: "#333", strokeWidth: 1.5 }),
+                $(go.TextBlock, { margin: 8, font: "bold 12px sans-serif", wrap: go.TextBlock.WrapFit, width: 140 },
+                    new go.Binding("text"))
+            );
+
+        // Spot token template (small node inside the pool)
+        myDiagram.nodeTemplateMap.add("Spot",
+            $(go.Node, "Auto",
+                { width: 100, height: 60 },
+                $(go.Shape, "RoundedRectangle", { fill: "#ffecb3", stroke: "#ff9800", strokeWidth: 1.5 }),
+                $(go.TextBlock, {
+                    margin: 4,
+                    font: "11px sans-serif",
+                    wrap: go.TextBlock.WrapFit,
+                    textAlign: "center"
+                },
+                    new go.Binding("text"))
+            )
+        );
+        myDiagram.nodeTemplateMap.add("PumpToken",
+            $(go.Node, "Auto",
+                $(go.Shape, "RoundedRectangle", { fill: "#b2ebf2", stroke: "#0097a7", strokeWidth: 1.5 }),
+                $(go.TextBlock, {
+                    margin: 4,
+                    font: "bold 11px sans-serif",
+                    wrap: go.TextBlock.WrapFit,
+                    textAlign: "center"
+                },
+                    new go.Binding("text"))
+            )
+        );
+
+        // Link template
+        myDiagram.linkTemplate =
+            $(go.Link,
+                { routing: go.Link.AvoidsNodes, curve: go.Link.JumpOver, corner: 5 },
+                $(go.Shape, { strokeWidth: 1.5 }),
+                $(go.Shape, { toArrow: "Standard" }),
+                $(go.Panel, "Auto",
+                    $(go.Shape, { fill: "#fff" }),
+                    $(go.TextBlock, { margin: 4, font: "10px sans-serif" },
+                        new go.Binding("text"))
+                )
+            );
+        // Group template for Brodown Pool
+        myDiagram.groupTemplateMap.add("BrodownPoolGroup",
+            $(go.Group, "Vertical",
+                {
+                    layout: $(go.GridLayout, { wrappingColumn: 5, spacing: new go.Size(10, 10) }),
+                    margin: new go.Margin(20, 0, 20, 0),
+                    background: "#fff5e6",
+                    padding: 10
+                },
+                $(go.TextBlock, "🔥 Brodown Pool 🔥",
+                    { font: "bold 16px sans-serif", margin: new go.Margin(0, 0, 10, 0) }),
+                $(go.Placeholder) // this reserves space for inner nodes
+            )
+        );
+        myDiagram.groupTemplateMap.add("PumpListGroup",
+            $(go.Group, "Vertical",
+                {
+                    layout: $(go.GridLayout, {
+                        wrappingColumn: 1,
+                        spacing: new go.Size(10, 10),
+                        alignment: go.GridLayout.Position
+                    }),
+                    background: "#e0f7fa",
+                    padding: 10
+                },
+                $(go.TextBlock, "🩸 Pump List (Unspotted Effort)",
+                    { font: "bold 14px sans-serif", margin: new go.Margin(0, 0, 10, 0) }),
+                $(go.Placeholder)
+            )
+        );
+        // Initial base nodes - add the new "EnterPumpList" node
+        const nodeDataArray = [
+            { key: "Start", text: "Start" },
+            { key: "SignIn", text: "Sign in with World ID" },
+            { key: "BroNameCheck", text: "Bro Name Set?" },
+            { key: "CreateBro", text: "Redirect to /create-bro" },
+            { key: "SetBroName", text: "User selects bro name" },
+            { key: "SaveToSession", text: "Bro name saved to session" },
+            { key: "Dashboard", text: "Load Dashboard" },
+            { key: "LogActivity", text: "User logs activity" },
+            { key: "EnterPumpList", text: "User enters pump list" }, // New node
+            { key: "GetSpotted", text: "Other user 'spots' them" },
+            {
+                key: "PumpList",
+                isGroup: true,
+                category: "PumpListGroup",
+                location: new go.Point(600, 400) // Position further right
+            },
+            { key: "Reward", text: "Reward Split with Spotter" },
+            { key: "BrodownPool", isGroup: true, category: "BrodownPoolGroup" }
+        ];
+
+        // Dynamically add 20 Spot tokens
+        for (let i = 1; i <= 20; i++) {
+            const broId = Math.floor(Math.random() * 100) + 1;
+            const spotterId = Math.floor(Math.random() * 100) + 1;
+            nodeDataArray.push({
+                key: `spot${i}`,
+                text: `Bro #${broId} + Spotter #${spotterId}\n(Spot #${i})`,
+                group: "BrodownPool",
+                category: "Spot"
+            });
+        }
+
+
+
+        // Add the user who just logged the activity
+        nodeDataArray.push({
+            key: "pumpUser",
+            text: "🧍 Bro #YOU",
+            group: "PumpList",
+            category: "PumpToken"
+        });
+
+        // Add 9 more bros randomly
+        for (let i = 1; i <= 9; i++) {
+            const broId = Math.floor(Math.random() * 100) + 1;
+            nodeDataArray.push({
+                key: `pump${i}`,
+                text: `Bro #${broId}`,
+                group: "PumpList",
+                category: "PumpToken"
+            });
+        }
+
+        // Modified link structure with EnterPumpList
+        const linkDataArray = [
+            { from: "Start", to: "SignIn" },
+            { from: "SignIn", to: "BroNameCheck" },
+            { from: "BroNameCheck", to: "CreateBro", text: "No" },
+            { from: "BroNameCheck", to: "Dashboard", text: "Yes" },
+            { from: "CreateBro", to: "SetBroName" },
+            { from: "SetBroName", to: "SaveToSession" },
+            { from: "SaveToSession", to: "Dashboard" },
+            { from: "Dashboard", to: "LogActivity" },
+            // Add link from LogActivity to EnterPumpList
+            { from: "LogActivity", to: "EnterPumpList" },
+            // Link from EnterPumpList to PumpList (side branch)
+            { from: "EnterPumpList", to: "PumpList" },
+            // Main flow continues from EnterPumpList to GetSpotted
+            { from: "PumpList", to: "GetSpotted" },
+            { from: "GetSpotted", to: "BrodownPool" },
+            { from: "BrodownPool", to: "Reward" }
+        ];
+
+        // Apply to model
+        myDiagram.model = new go.GraphLinksModel(nodeDataArray, linkDataArray);
+
+        // Fix the position of the PumpList group
+        myDiagram.findNodeForKey("PumpList").movable = true;
+
+        // Add this to prevent automatic layout for EnterPumpList
+        myDiagram.findNodeForKey("EnterPumpList").layoutConditions = go.Part.LayoutStandard & ~go.Part.LayoutNodeSized;
+
+    </script>
+</body>
+
+</html>

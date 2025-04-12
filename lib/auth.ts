@@ -65,6 +65,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.username = (user as any).username ?? null;
+        console.log("JWT callback - user object:", { id: user.id, name: user.name });
       }
       return token;
     },
@@ -73,6 +74,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user && token) {
         session.user.id = token.id as string;
         session.user.username = token.username as string | null;
+        console.log("Session callback - updated session:", session);
       }
       return session;
     },
