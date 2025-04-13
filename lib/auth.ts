@@ -10,6 +10,12 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+// Create a Supabase client for server-side operations using the service role key
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // Use the service role key for admin operations
+);
+
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 
@@ -53,7 +59,8 @@ export const authOptions: NextAuthOptions = {
       console.log(`[signIn Callback] Attempting to find/create user for world_id: ${worldId}`);
 
       try {
-        const { data: existingUser, error: selectError } = await supabase
+        // Use the admin client to bypass RLS and check for existing users
+        const { data: existingUser, error: selectError } = await supabaseAdmin
           .from('users')
           .select('*') // Select all columns for debugging
           .eq('world_id', worldId)
@@ -68,7 +75,7 @@ export const authOptions: NextAuthOptions = {
           console.log('[signIn Callback] ✅ Existing user found:', JSON.stringify(existingUser, null, 2));
         } else {
           console.log(`[signIn Callback] No existing user found. Attempting to insert new user with world_id: ${worldId}, wallet_address: ${walletAddress}`);
-          const { error: insertError } = await supabase.from('users').insert({
+          const { error: insertError } = await supabaseAdmin.from('users').insert({
             world_id: worldId,
             wallet_address: walletAddress, // Use the potentially null walletAddress
           });
