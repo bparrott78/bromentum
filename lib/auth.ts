@@ -1,6 +1,10 @@
 import { NextAuthOptions } from "next-auth";
 import { createClient } from '@supabase/supabase-js';
 
+// Log the environment variables right before creating the client
+console.log('[Supabase Init] NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+console.log('[Supabase Init] NEXT_PUBLIC_SUPABASE_ANON_KEY exists:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY); // Log existence, not the key itself for security
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
