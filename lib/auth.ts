@@ -32,33 +32,57 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async signIn({ user }) {
-      const worldId = user.id;
-      const walletAddress = user.name;
+    async signIn({ user, account, profile }) { // Added account and profile for more context
+      console.log("[signIn Callback] User:", JSON.stringify(user, null, 2));
+      console.log("[signIn Callback] Account:", JSON.stringify(account, null, 2));
+      console.log("[signIn Callback] Profile:", JSON.stringify(profile, null, 2));
 
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('*')
-        .eq('world_id', worldId)
-        .single();
-
-      if (!existingUser) {
-        const { error: insertError } = await supabase.from('users').insert({
-          world_id: worldId,
-          wallet_address: walletAddress,
-        });
-
-        if (insertError) {
-          console.error('❌ Failed to insert user:', insertError);
-          return false;
-        }
-
-        console.log('✅ New user created:', worldId);
-      } else {
-        console.log('✅ Existing user logged in:', worldId);
+      if (!user?.id) {
+        console.error("[signIn Callback] Error: User ID is missing.");
+        return false; // Cannot proceed without user ID
       }
 
-      return true;
+      const worldId = user.id;
+      // Let's be safer, check if name exists, otherwise use a placeholder or handle differently
+      const walletAddress = user.name ?? null; // Use null if name is missing
+
+      console.log(`[signIn Callback] Attempting to find/create user for world_id: ${worldId}`);
+
+      try {
+        const { data: existingUser, error: selectError } = await supabase
+          .from('users')
+          .select('*') // Select all columns for debugging
+          .eq('world_id', worldId)
+          .single();
+
+        if (selectError && selectError.code !== 'PGRST116') { // PGRST116: "Row to return was not found" - expected if user is new
+          console.error('[signIn Callback] Supabase select error:', selectError);
+          return false; // Indicate sign-in failure
+        }
+
+        if (existingUser) {
+          console.log('[signIn Callback] ✅ Existing user found:', JSON.stringify(existingUser, null, 2));
+        } else {
+          console.log(`[signIn Callback] No existing user found. Attempting to insert new user with world_id: ${worldId}, wallet_address: ${walletAddress}`);
+          const { error: insertError } = await supabase.from('users').insert({
+            world_id: worldId,
+            wallet_address: walletAddress, // Use the potentially null walletAddress
+          });
+
+          if (insertError) {
+            console.error('[signIn Callback] ❌ Failed to insert user:', insertError);
+            return false; // Indicate sign-in failure
+          }
+
+          console.log(`[signIn Callback] ✅ New user created for world_id: ${worldId}`);
+        }
+
+        console.log("[signIn Callback] Sign-in successful.");
+        return true; // Indicate sign-in success
+      } catch (err) {
+        console.error("[signIn Callback] Unexpected error during Supabase operation:", err);
+        return false; // Indicate sign-in failure on unexpected errors
+      }
     },
 
     async jwt({ token, user }) {
