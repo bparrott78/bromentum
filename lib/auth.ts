@@ -1,20 +1,4 @@
 import { NextAuthOptions } from "next-auth";
-import { createClient } from '@supabase/supabase-js';
-
-// Log the environment variables right before creating the client
-console.log('[Supabase Init] NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-console.log('[Supabase Init] NEXT_PUBLIC_SUPABASE_ANON_KEY exists:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY); // Log existence, not the key itself for security
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-// Create a Supabase client for server-side operations using the service role key
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // Use the service role key for admin operations
-);
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
@@ -42,58 +26,18 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async signIn({ user, account, profile }) { // Added account and profile for more context
+    async signIn({ user, account, profile }) {
+      // Only log and check for user.id, no DB logic
       console.log("[signIn Callback] User:", JSON.stringify(user, null, 2));
       console.log("[signIn Callback] Account:", JSON.stringify(account, null, 2));
       console.log("[signIn Callback] Profile:", JSON.stringify(profile, null, 2));
 
       if (!user?.id) {
         console.error("[signIn Callback] Error: User ID is missing.");
-        return false; // Cannot proceed without user ID
+        return false;
       }
-
-      const worldId = user.id;
-      // Let's be safer, check if name exists, otherwise use a placeholder or handle differently
-      const walletAddress = user.name ?? null; // Use null if name is missing
-
-      console.log(`[signIn Callback] Attempting to find/create user for world_id: ${worldId}`);
-
-      try {
-        // Use the admin client to bypass RLS and check for existing users
-        const { data: existingUser, error: selectError } = await supabaseAdmin
-          .from('users')
-          .select('*') // Select all columns for debugging
-          .eq('world_id', worldId)
-          .single();
-
-        if (selectError && selectError.code !== 'PGRST116') { // PGRST116: "Row to return was not found" - expected if user is new
-          console.error('[signIn Callback] Supabase select error:', selectError);
-          return false; // Indicate sign-in failure
-        }
-
-        if (existingUser) {
-          console.log('[signIn Callback] ✅ Existing user found:', JSON.stringify(existingUser, null, 2));
-        } else {
-          console.log(`[signIn Callback] No existing user found. Attempting to insert new user with world_id: ${worldId}, wallet_address: ${walletAddress}`);
-          const { error: insertError } = await supabaseAdmin.from('users').insert({
-            world_id: worldId,
-            wallet_address: walletAddress, // Use the potentially null walletAddress
-          });
-
-          if (insertError) {
-            console.error('[signIn Callback] ❌ Failed to insert user:', insertError);
-            return false; // Indicate sign-in failure
-          }
-
-          console.log(`[signIn Callback] ✅ New user created for world_id: ${worldId}`);
-        }
-
-        console.log("[signIn Callback] Sign-in successful.");
-        return true; // Indicate sign-in success
-      } catch (err) {
-        console.error("[signIn Callback] Unexpected error during Supabase operation:", err);
-        return false; // Indicate sign-in failure on unexpected errors
-      }
+      // No DB, just allow sign in
+      return true;
     },
 
     async jwt({ token, user }) {
